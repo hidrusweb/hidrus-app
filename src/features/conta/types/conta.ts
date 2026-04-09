@@ -84,6 +84,8 @@ export type ContaResumoItem = {
   ano: number;
   periodoFim: string;
   dataLeitura?: string | null;
+  leituraAnterior: number;
+  leituraAtual: number;
   consumo: number;
   valorTotal: number;
   nomeCondominio: string;

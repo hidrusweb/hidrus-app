@@ -53,20 +53,28 @@ function ContaResumoCard({
         <Text style={styles.cardMonth}>{mesLabel}</Text>
         <Text style={styles.cardYear}>{item.ano}</Text>
       </View>
-      <Text style={styles.cardUnit} numberOfLines={2}>
+      {/* <Text style={styles.cardUnit} numberOfLines={2}>
         {item.rotuloUnidade}
-      </Text>
+      </Text> */}
+      <View style={styles.cardRow}>
+        <Text style={styles.cardLabel}>Total</Text>
+        <Text style={[styles.cardValue, styles.cardTotal]}>{formatCurrency(item.valorTotal)}</Text>
+      </View>
       <View style={styles.cardRow}>
         <Text style={styles.cardLabel}>Data da leitura</Text>
         <Text style={styles.cardValue}>{formatDate(item.dataLeitura ?? "") || "—"}</Text>
       </View>
       <View style={styles.cardRow}>
-        <Text style={styles.cardLabel}>Consumo</Text>
-        <Text style={styles.cardValue}>{item.consumo.toLocaleString("pt-BR")} m³</Text>
+        <Text style={styles.cardLabel}>Leitura anterior</Text>
+        <Text style={styles.cardValue}>{item.leituraAnterior.toLocaleString("pt-BR")}</Text>
       </View>
       <View style={styles.cardRow}>
-        <Text style={styles.cardLabel}>Valor total</Text>
-        <Text style={[styles.cardValue, styles.cardTotal]}>{formatCurrency(item.valorTotal)}</Text>
+        <Text style={styles.cardLabel}>Leitura atual</Text>
+        <Text style={styles.cardValue}>{item.leituraAtual.toLocaleString("pt-BR")}</Text>
+      </View>
+      <View style={styles.cardRow}>
+        <Text style={styles.cardLabel}>Consumo</Text>
+        <Text style={styles.cardValue}>{item.consumo.toLocaleString("pt-BR")} m³</Text>
       </View>
       {loadingOpen ? (
         <View style={styles.cardLoadingOverlay}>
@@ -280,9 +288,28 @@ const styles = StyleSheet.create({
   },
   cardPressed: { opacity: 0.92 },
   cardDisabled: { opacity: 0.6 },
-  cardTitleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.xs },
-  cardMonth: { fontSize: 18, fontWeight: "700", color: colors.text },
-  cardYear: { fontSize: 18, fontWeight: "700", color: colors.text },
+  cardTitleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: spacing.xs,
+    borderRadius: 10,
+    backgroundColor: colors.secondary,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  cardMonth: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+  },
+  cardYear: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
+  },
   cardUnit: { fontSize: 14, color: colors.mutedText, marginBottom: spacing.sm },
   cardRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: spacing.xs },
   cardLabel: { color: colors.mutedText, fontSize: 14 },

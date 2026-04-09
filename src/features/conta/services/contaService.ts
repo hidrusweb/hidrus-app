@@ -107,6 +107,8 @@ export async function getResumoContasPorUnidade(
       mes: Number(row.mes ?? 0),
       periodoFim: String(row.periodoFim ?? "").trim(),
       dataLeitura: row.dataLeitura ?? row.DataLeitura ?? null,
+      leituraAnterior: Number(row.leituraAnterior ?? row.LeituraAnterior ?? 0),
+      leituraAtual: Number(row.leituraAtual ?? row.LeituraAtual ?? 0),
       consumo: Number(row.consumo ?? row.Consumo ?? 0),
       valorTotal: Number(row.valorTotal ?? row.ValorTotal ?? 0),
       nomeCondominio: unidade.nomeCondominio,
