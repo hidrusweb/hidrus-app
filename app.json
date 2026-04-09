@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "hidrus-app",
+    "name": "Hidrus Contas",
     "slug": "hidrus-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -29,6 +29,7 @@
       }
     },
     "android": {
+      "package": "com.contas.hidrus",
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo-hydrus-only-image.png",
         "backgroundColor": "#000000"

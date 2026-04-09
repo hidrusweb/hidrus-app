@@ -1,0 +1,44 @@
+name: Android Release to Play Store (EAS)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  release-android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Expo and EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create Google Play service account key file
+        run: |
+          mkdir -p .secrets
+          printf '%s' "${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}" > .secrets/google-play-service-account.json
+
+      - name: Build Android production bundle (AAB)
+        run: npx eas build --platform android --profile production --non-interactive --wait
+
+      - name: Submit latest Android build to Play Store
+        run: npx eas submit --platform android --profile production --latest --non-interactive
