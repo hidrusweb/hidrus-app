@@ -38,7 +38,7 @@ jobs:
           printf '%s' "${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}" > .secrets/google-play-service-account.json
 
       - name: Build Android production bundle (AAB)
-        run: npx eas build --platform android --profile production --non-interactive --wait
+        run: eas build --platform android --profile production --non-interactive --wait
 
       - name: Submit latest Android build to Play Store
-        run: npx eas submit --platform android --profile production --latest --non-interactive
+        run: eas submit --platform android --profile production --latest --non-interactive
