@@ -1,12 +1,11 @@
 {
   "expo": {
-    "name": "hidrus-app-native",
-    "slug": "hidrus-app-native",
+    "name": "hidrus-app",
+    "slug": "hidrus-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
