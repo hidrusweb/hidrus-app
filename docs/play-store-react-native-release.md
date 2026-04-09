@@ -52,7 +52,7 @@ Arquivo `eas.json` (ja preparado neste projeto):
 
 ### 4.1 Expo
 
-- Gerar token Expo: `eas token:create`.
+- Criar token em **expo.dev** -> **Account** -> **Access Tokens** (ou `eas login` + painel).
 - Salvar no GitHub Secret: `EXPO_TOKEN`.
 
 ### 4.2 Google Play
@@ -62,7 +62,11 @@ Arquivo `eas.json` (ja preparado neste projeto):
 3. No Play Console:
    - `Setup -> API access` e vincular o projeto.
    - Conceder permissao para a service account no app (release manager/admin conforme politica interna).
-4. Salvar o JSON inteiro no GitHub Secret: `GOOGLE_SERVICE_ACCOUNT_JSON`.
+4. Salvar a chave no GitHub (use **um** dos dois):
+   - `GOOGLE_SERVICE_ACCOUNT_JSON`: conteudo **exato** do arquivo `.json` baixado (deve comecar com `{` e ter `"type": "service_account"` com aspas).
+   - **Ou** `GOOGLE_SERVICE_ACCOUNT_JSON_B64`: o mesmo arquivo codificado em Base64 (evita problemas ao colar multilinha). No Mac use redirecionamento (o `-i` do Linux nao e o mesmo): `base64 < caminho/para/chave.json | tr -d '\n' | pbcopy` (uma linha so, ideal para secret).
+
+Se o secret estiver em formato `type: service_account` **sem aspas**, nao e JSON valido e o submit falha. Sempre copie do arquivo original do Google Cloud.
 
 ## 5) Pipeline CI/CD (GitHub Actions)
 

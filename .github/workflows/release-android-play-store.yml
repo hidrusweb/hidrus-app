@@ -36,9 +36,17 @@ jobs:
         run: eas init --id "${{ secrets.EAS_PROJECT_ID }}" --force --non-interactive
 
       - name: Create Google Play service account key file
+        env:
+          GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          GOOGLE_SA_JSON_B64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_B64 }}
         run: |
           mkdir -p .secrets
-          printf '%s' "${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}" > .secrets/google-play-service-account.json
+          if [ -n "$GOOGLE_SA_JSON_B64" ]; then
+            echo "$GOOGLE_SA_JSON_B64" | base64 -d > .secrets/google-play-service-account.json
+          else
+            printf '%s' "$GOOGLE_SA_JSON" > .secrets/google-play-service-account.json
+          fi
+          python3 -c "import json, pathlib; p=pathlib.Path('.secrets/google-play-service-account.json'); json.load(p.open()); print('OK: service account JSON is valid')"
 
       - name: Build Android production bundle (AAB)
         run: eas build --platform android --profile production --non-interactive --wait

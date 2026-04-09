@@ -30,6 +30,7 @@
     },
     "android": {
       "package": "com.contas.hidrus",
+      "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo-hydrus-only-image.png",
         "backgroundColor": "#000000"
