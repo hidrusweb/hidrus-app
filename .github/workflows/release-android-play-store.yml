@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Link EAS project (non-interactive)
+        run: eas init --id "${{ secrets.EAS_PROJECT_ID }}" --force --non-interactive
+
       - name: Create Google Play service account key file
         run: |
           mkdir -p .secrets

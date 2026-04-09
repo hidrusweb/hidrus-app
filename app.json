@@ -39,6 +39,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ee3fd2cd-5134-420d-a22c-9472aba62dac"
+      }
+    },
+    "owner": "hidrusweb"
   }
 }
