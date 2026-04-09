@@ -9,7 +9,7 @@
     "splash": {
       "image": "./assets/logo-hydrus.png",
       "resizeMode": "contain",
-      "backgroundColor": "#000000"
+      "backgroundColor": "#FFFFFF"
     },
     "ios": {
       "supportsTablet": true,
