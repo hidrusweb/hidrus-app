@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useForm } from "react-hook-form";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { z } from "zod";
 import { colors, spacing } from "../../../core/theme/theme";
 import { FormInput } from "../../../shared/components/FormInput";
@@ -37,6 +37,11 @@ export function LoginScreen() {
 
   return (
     <View style={styles.container}>
+      <Image
+        source={require("../../../../assets/logo-hydrus-horizontal.png")}
+        style={styles.logo}
+        resizeMode="contain"
+      />
       <Text style={styles.title}>Entrar</Text>
       <FormInput control={control} name="cpf" label="CPF/CNPJ" />
       <FormInput control={control} name="senha" label="Senha" secureTextEntry />
@@ -59,7 +64,8 @@ export function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, padding: spacing.lg, justifyContent: "center" },
-  title: { fontSize: 28, fontWeight: "700", marginBottom: spacing.xl, color: colors.text },
+  logo: { width: "100%", height: 170, marginBottom: spacing.md },
+  title: { fontSize: 28, fontWeight: "700", marginBottom: spacing.lg, color: colors.text, textAlign: "center" },
   row: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: spacing.lg },
   checkbox: { width: 18, height: 18, borderRadius: 4, borderColor: colors.border, borderWidth: 2 },
   checkboxChecked: { backgroundColor: colors.primary, borderColor: colors.primary },

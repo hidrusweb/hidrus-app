@@ -60,4 +60,39 @@ export type Unidade = {
 export type UnidadeOption = {
   label: string;
   value: number;
+  idCondominio: number;
+  nomeCondominio: string;
+  nomeAgrupamento: string;
+  nomeUnidade: string;
+};
+
+/** Uma linha na lista de contas (unidade + período de faturamento). */
+export type ContaListaChave = {
+  idUnidade: number;
+  mes: number;
+  ano: number;
+  idCondominio: number;
+  nomeCondominio: string;
+  /** Data fim do ciclo (TB_CONSUMO) para ordenar do mais novo ao mais antigo. */
+  periodoFim: string;
+  rotuloUnidade: string;
+};
+
+export type ContaResumoItem = {
+  idUnidade: number;
+  mes: number;
+  ano: number;
+  periodoFim: string;
+  dataLeitura?: string | null;
+  consumo: number;
+  valorTotal: number;
+  nomeCondominio: string;
+  rotuloUnidade: string;
+};
+
+export type ContaResumoPage = {
+  items: ContaResumoItem[];
+  page: number;
+  perPage: number;
+  hasMore: boolean;
 };

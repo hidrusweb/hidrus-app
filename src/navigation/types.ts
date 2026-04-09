@@ -8,7 +8,7 @@ export type AuthStackParamList = {
 };
 
 export type AppStackParamList = {
-  GenerateBill: undefined;
+  HomeTabs: undefined;
   Profile: undefined;
   BillTabs: { unidade: Unidade };
 };

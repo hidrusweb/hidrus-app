@@ -20,7 +20,7 @@ export function BillTabsScreen() {
   const historico = (unidade.historico ?? []).slice(0, 6);
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView style={styles.container} edges={["left", "right"]}>
       <View style={styles.header}>
         <Text style={styles.name}>{unidade.nomeCondomino}</Text>
         <Text style={styles.subtitle}>{unidade.nomeCondominio} {unidade.unidade}</Text>

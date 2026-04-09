@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { setApiAuthToken } from "../../../core/api/client";
 import { getSavedAuthUser, saveAuthUser } from "../../../core/storage/sessionStorage";
+import { clearContaApiCaches } from "../../conta/services/contaService";
 import { getAccountProfile, login as loginRequest } from "../services/authService";
 import type { AuthUser } from "../types/auth";
 
@@ -44,7 +45,7 @@ export const useAuthStore = create<AuthState>((set) => ({
             ...(profile.cpf ? { cpf: profile.cpf } : {}),
             loginId: profile.loginId || saved.loginId,
           };
-          if (saved.lembrar) await saveAuthUser(user);
+          await saveAuthUser(user);
         } catch {
           /* offline ou /me indisponível: mantém sessão salva */
         }
@@ -79,8 +80,9 @@ export const useAuthStore = create<AuthState>((set) => ({
         const formatted = formatCpfCnpjFromDigits(cpf);
         if (formatted) user.cpf = formatted;
       }
-      await saveAuthUser(lembrar ? user : null);
-      set({ user, loading: false });
+      const toSave: AuthUser = { ...user, lembrar, senha: lembrar ? user.senha : undefined };
+      await saveAuthUser(toSave);
+      set({ user: toSave, loading: false });
     } catch (error) {
       set({ loading: false });
       throw error;
@@ -88,6 +90,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   logout: async () => {
     setApiAuthToken(null);
+    clearContaApiCaches();
     await saveAuthUser(null);
     set({ user: null });
   },

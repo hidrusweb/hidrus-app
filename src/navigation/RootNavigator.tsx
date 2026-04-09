@@ -9,7 +9,7 @@ import { RecoverValidateScreen } from "../features/auth/screens/RecoverValidateS
 import { RegisterScreen } from "../features/auth/screens/RegisterScreen";
 import { SplashScreen } from "../features/auth/screens/SplashScreen";
 import { BillTabsScreen } from "../features/conta/screens/BillTabsScreen";
-import { GenerateBillScreen } from "../features/conta/screens/GenerateBillScreen";
+import { HomeTabsScreen } from "../features/conta/screens/HomeTabsScreen";
 import { AppStackHeader } from "./AppStackHeader";
 import type { AppStackParamList, AuthStackParamList } from "./types";
 
@@ -35,7 +35,11 @@ function AppNavigator() {
         header: (props) => <AppStackHeader {...props} />,
       }}
     >
-      <AppStack.Screen name="GenerateBill" component={GenerateBillScreen} />
+      <AppStack.Screen
+        name="HomeTabs"
+        component={HomeTabsScreen}
+        options={{ title: "Minhas contas" }}
+      />
       <AppStack.Screen
         name="Profile"
         component={ProfileScreen}
@@ -48,6 +52,7 @@ function AppNavigator() {
         name="BillTabs"
         component={BillTabsScreen}
         options={{
+          title: "Detalhes",
           headerBackVisible: true,
         }}
       />

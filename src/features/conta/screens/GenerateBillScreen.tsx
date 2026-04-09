@@ -6,7 +6,7 @@ import { ActionSheetIOS, Alert, Platform, Pressable, StyleSheet, Text, View } fr
 import { colors, spacing } from "../../../core/theme/theme";
 import { PrimaryButton } from "../../../shared/components/PrimaryButton";
 import { useAuthStore } from "../../auth/store/useAuthStore";
-import { getConsumoPeriodos, getUnidade, getUnidades, monthOptions } from "../services/contaService";
+import { getPeriodosContaPorUnidade, getUnidade, getUnidades, monthOptions } from "../services/contaService";
 import type { UnidadeOption } from "../types/conta";
 import type { AppStackParamList } from "../../../navigation/types";
 
@@ -21,26 +21,73 @@ export function GenerateBillScreen() {
   const [mesesPorAno, setMesesPorAno] = useState<Record<number, number[]>>({});
   const [unidades, setUnidades] = useState<UnidadeOption[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingPeriodos, setLoadingPeriodos] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
         const loginId = user?.loginId || user?.email || user?.cpf || "";
-        const [periodos, units] = await Promise.all([getConsumoPeriodos(), getUnidades(loginId)]);
-        setAnos(periodos.anos);
-        setMesesPorAno(periodos.mesesPorAno);
-        const firstAno = periodos.anos[0] ?? null;
-        const firstMes = firstAno ? periodos.mesesPorAno[firstAno]?.[0] ?? null : null;
-        setAno(firstAno);
-        setMes(firstMes);
-        setMesesDisponiveis(firstAno ? periodos.mesesPorAno[firstAno] ?? [] : []);
+        const units = await getUnidades(loginId);
         setUnidades(units);
-        setUnidadeId(units[0]?.value ?? null);
+        setUnidadeId((prev) => (prev != null && units.some((u) => u.value === prev) ? prev : units[0]?.value ?? null));
       } catch (error) {
         Alert.alert("Erro", (error as Error).message);
       }
     })();
   }, [user?.loginId, user?.email, user?.cpf]);
+
+  useEffect(() => {
+    if (!unidadeId) {
+      setAnos([]);
+      setMesesPorAno({});
+      setAno(null);
+      setMes(null);
+      setMesesDisponiveis([]);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      setLoadingPeriodos(true);
+      try {
+        const periods = await getPeriodosContaPorUnidade(unidadeId);
+        if (cancelled) return;
+        const mesesPorAno: Record<number, number[]> = {};
+        for (const p of periods) {
+          if (!mesesPorAno[p.ano]) mesesPorAno[p.ano] = [];
+          if (!mesesPorAno[p.ano].includes(p.mes)) mesesPorAno[p.ano].push(p.mes);
+        }
+        for (const y of Object.keys(mesesPorAno)) {
+          mesesPorAno[Number(y)].sort((a, b) => b - a);
+        }
+        const anos = Object.keys(mesesPorAno)
+          .map(Number)
+          .sort((a, b) => b - a);
+        setMesesPorAno(mesesPorAno);
+        setAnos(anos);
+        const firstAno = anos[0] ?? null;
+        const firstMes = firstAno ? mesesPorAno[firstAno]?.[0] ?? null : null;
+        setAno(firstAno);
+        setMes(firstMes);
+        setMesesDisponiveis(firstAno ? mesesPorAno[firstAno] ?? [] : []);
+      } catch (error) {
+        if (!cancelled) {
+          Alert.alert("Erro", (error as Error).message);
+          setAnos([]);
+          setMesesPorAno({});
+          setAno(null);
+          setMes(null);
+          setMesesDisponiveis([]);
+        }
+      } finally {
+        if (!cancelled) setLoadingPeriodos(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [unidadeId]);
 
   useEffect(() => {
     if (!ano) {
@@ -154,6 +201,9 @@ export function GenerateBillScreen() {
           ))}
         </Picker>,
       )}
+      {!loadingPeriodos && unidadeId && anos.length === 0 ? (
+        <Text style={styles.hint}>Nenhum período com conta disponível para esta unidade.</Text>
+      ) : null}
       {renderSelect(
         "Unidade",
         unidadeLabel,
@@ -165,7 +215,7 @@ export function GenerateBillScreen() {
           ))}
         </Picker>,
       )}
-      <PrimaryButton label="Gerar Conta" loading={loading} onPress={onGenerate} />
+      <PrimaryButton label="Gerar Conta" loading={loading || loadingPeriodos} onPress={onGenerate} />
     </View>
   );
 }
@@ -196,5 +246,11 @@ const styles = StyleSheet.create({
     color: colors.mutedText,
     marginLeft: spacing.sm,
     fontSize: 16,
+  },
+  hint: {
+    color: colors.mutedText,
+    fontSize: 14,
+    marginBottom: spacing.md,
+    fontStyle: "italic",
   },
 });

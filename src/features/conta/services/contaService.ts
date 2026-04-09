@@ -1,6 +1,8 @@
 import { apiClient, normalizeApiError } from "../../../core/api/client";
 import { getApiBaseUrl } from "../../../core/config/env";
 import type {
+  ContaResumoPage,
+  ContaResumoItem,
   FaixaImposto,
   Unidade,
   UnidadeOption,
@@ -61,45 +63,100 @@ export const monthOptions = [
   { label: "Dezembro", value: 12 },
 ];
 
-export type ConsumoPeriodos = {
-  anos: number[];
-  mesesPorAno: Record<number, number[]>;
+export type PeriodoContaUnidade = {
+  ano: number;
+  mes: number;
+  periodoFim: string;
 };
 
-export async function getConsumoPeriodos(): Promise<ConsumoPeriodos> {
+/** Ano/mês em que a unidade tem leitura e existe consumo ativo (conta pode ser gerada). */
+export async function getPeriodosContaPorUnidade(idUnidade: number): Promise<PeriodoContaUnidade[]> {
   try {
-    const { data } = await apiClient.get("/consumption/consumption");
-    const list = (Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []) as Array<{
-      dataFim?: string;
-      DataFim?: string;
-    }>;
-    const mesesPorAno: Record<number, number[]> = {};
-
-    for (const item of list) {
-      const rawDate = item.dataFim ?? item.DataFim;
-      if (!rawDate) continue;
-      const date = new Date(rawDate);
-      if (Number.isNaN(date.getTime())) continue;
-      const year = date.getFullYear();
-      const month = date.getMonth() + 1;
-      if (year < 2020) continue;
-      if (!mesesPorAno[year]) mesesPorAno[year] = [];
-      if (!mesesPorAno[year].includes(month)) mesesPorAno[year].push(month);
-    }
-
-    const anos = Object.keys(mesesPorAno)
-      .map(Number)
-      .sort((a, b) => b - a);
-
-    for (const ano of anos) {
-      mesesPorAno[ano].sort((a, b) => b - a);
-    }
-
-    return { anos, mesesPorAno };
+    const { data } = await apiClient.get(`/mensuration/unidade/${idUnidade}/periodos-disponiveis`);
+    const list = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+    return list
+      .map((row: any) => {
+        const ano = Number(row.ano ?? row.Ano ?? 0);
+        const mes = Number(row.mes ?? row.Mes ?? 0);
+        let periodoFim = String(row.periodoFim ?? row.PeriodoFim ?? "").trim();
+        if (!periodoFim && ano > 0 && mes >= 1 && mes <= 12) {
+          periodoFim = `${ano}-${String(mes).padStart(2, "0")}-28`;
+        }
+        return { ano, mes, periodoFim };
+      })
+      .filter((p: PeriodoContaUnidade) => p.ano > 0 && p.mes >= 1 && p.mes <= 12);
   } catch (error) {
     throw new Error(normalizeApiError(error));
   }
 }
+
+/** Uma chamada paginada já com resumo (leitura, consumo e total) para render da lista. */
+export async function getResumoContasPorUnidade(
+  unidade: UnidadeOption,
+  page = 1,
+  perPage = 10,
+): Promise<ContaResumoPage> {
+  try {
+    const { data } = await apiClient.get(`/mensuration/unidade/${unidade.value}/periodos-conta`, {
+      params: { page, perPage },
+    });
+    const rows = Array.isArray(data?.data) ? data.data : [];
+    const items: ContaResumoItem[] = rows.map((row: any) => ({
+      idUnidade: Number(row.idUnidade ?? unidade.value),
+      ano: Number(row.ano ?? 0),
+      mes: Number(row.mes ?? 0),
+      periodoFim: String(row.periodoFim ?? "").trim(),
+      dataLeitura: row.dataLeitura ?? row.DataLeitura ?? null,
+      consumo: Number(row.consumo ?? row.Consumo ?? 0),
+      valorTotal: Number(row.valorTotal ?? row.ValorTotal ?? 0),
+      nomeCondominio: unidade.nomeCondominio,
+      rotuloUnidade: `${unidade.nomeAgrupamento} — ${unidade.nomeUnidade}`.trim(),
+    }));
+    const meta = data?.meta ?? {};
+    return {
+      items,
+      page: Number(meta.page ?? page),
+      perPage: Number(meta.perPage ?? perPage),
+      hasMore: Boolean(meta.hasMore),
+    };
+  } catch (error) {
+    throw new Error(normalizeApiError(error));
+  }
+}
+
+const unidadeBillCache = new Map<string, Promise<Unidade>>();
+
+/** Evita N chamadas idênticas a /consumption/context para o mesmo (unidade, mês, ano). */
+const consumptionContextCache = new Map<string, Promise<number | null>>();
+
+/** Evita repetir /taxRanges/tableTax/{id} quando vários meses usam a mesma tabela. */
+const faixaImpostoCache = new Map<number, Promise<FaixaImposto[]>>();
+
+/** Uma única chamada a /tableTax/tax por sessão (getTaxId usa isto). */
+let allTaxListPromise: Promise<any[]> | null = null;
+
+export function getUnidadeBillCached(idUnidade: number, mes: number, ano: number): Promise<Unidade> {
+  const k = `${idUnidade}-${mes}-${ano}`;
+  let p = unidadeBillCache.get(k);
+  if (!p) {
+    p = getUnidade(idUnidade, mes, ano);
+    unidadeBillCache.set(k, p);
+  }
+  return p;
+}
+
+export function clearContaApiCaches() {
+  unidadeBillCache.clear();
+  consumptionContextCache.clear();
+  faixaImpostoCache.clear();
+  allTaxListPromise = null;
+}
+
+/** @deprecated use clearContaApiCaches */
+export function clearUnidadeBillCache() {
+  clearContaApiCaches();
+}
+
 
 export async function getUnidades(emailCpf: string): Promise<UnidadeOption[]> {
   const parseUnitList = (data: any): UnidadeOption[] => {
@@ -111,17 +168,25 @@ export async function getUnidades(emailCpf: string): Promise<UnidadeOption[]> {
         item?.nomeAgrupamento ?? item?.NomeAgrupamento ?? item?.agrupamento ?? item?.Agrupamento ?? "";
       const nomeUnidade =
         item?.nome ?? item?.Nome ?? item?.unidade ?? item?.Unidade ?? item?.numero ?? item?.Numero ?? "";
+      const idCondominio = Number(item?.idCondominio ?? item?.IdCondominio ?? 0);
       return {
         label: `${nomeCondominio}: ${nomeAgrupamento} - ${nomeUnidade}`,
         value: Number(item?.id ?? item?.Id),
+        idCondominio,
+        nomeCondominio: String(nomeCondominio),
+        nomeAgrupamento: String(nomeAgrupamento),
+        nomeUnidade: String(nomeUnidade),
       };
     });
   };
 
   try {
+    console.log('fetching unidades');
+    
     const { data } = await apiClient.get("/Unit/condomino/disponiveis", {
       params: { emailCpf },
     });
+    console.log('unidades fetched', data);
     return parseUnitList(data);
   } catch (error) {
     // One retry for transient network failures/timeouts.
@@ -144,8 +209,15 @@ async function getAllTax() {
   );
 }
 
+async function getAllTaxCached() {
+  if (!allTaxListPromise) {
+    allTaxListPromise = getAllTax();
+  }
+  return allTaxListPromise;
+}
+
 async function getTaxId(mes: number, ano: number) {
-  const taxes = await getAllTax();
+  const taxes = await getAllTaxCached();
   if (!taxes.length) return null;
   const selected = new Date(ano, mes - 1, 1);
   const match = taxes.find((e: any) => new Date(e.dataCriacao).getTime() <= selected.getTime());
@@ -157,6 +229,35 @@ async function getFaixaImpostos(idTabela: number): Promise<FaixaImposto[]> {
   const { data } = await apiClient.get(`/taxRanges/tableTax/${idTabela}`);
   const list = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
   return list.map(normalizeFaixaImpostoFromApi);
+}
+
+async function getFaixaImpostosCached(idTabela: number): Promise<FaixaImposto[]> {
+  let p = faixaImpostoCache.get(idTabela);
+  if (!p) {
+    p = getFaixaImpostos(idTabela);
+    faixaImpostoCache.set(idTabela, p);
+  }
+  return p;
+}
+
+function getCachedConsumptionContext(idUnidade: number, mes: number, ano: number): Promise<number | null> {
+  const k = `${idUnidade}|${ano}|${mes}`;
+  let p = consumptionContextCache.get(k);
+  if (!p) {
+    p = (async () => {
+      try {
+        const ctx = await apiClient.get(`/consumption/context/unidade/${idUnidade}`, {
+          params: { ano, mes },
+        });
+        const ctxId = Number(ctx?.data?.idTabelaImposto);
+        return Number.isFinite(ctxId) ? ctxId : null;
+      } catch {
+        return null;
+      }
+    })();
+    consumptionContextCache.set(k, p);
+  }
+  return p;
 }
 
 function normalizeUnidade(raw: any, faixaImposto: FaixaImposto[]): Unidade {
@@ -219,17 +320,7 @@ function normalizeUnidade(raw: any, faixaImposto: FaixaImposto[]): Unidade {
 
 export async function getUnidade(idUnidade: number, mes: number, ano: number): Promise<Unidade> {
   try {
-    let idTabela: number | null = null;
-    try {
-      // Same approach as hidrus-frontend-contas: resolve tax table by unit + year + month context.
-      const ctx = await apiClient.get(`/consumption/context/unidade/${idUnidade}`, {
-        params: { ano, mes },
-      });
-      const ctxId = Number(ctx?.data?.idTabelaImposto);
-      if (Number.isFinite(ctxId)) idTabela = ctxId;
-    } catch {
-      // Fallback handled below using tax list by date.
-    }
+    let idTabela: number | null = await getCachedConsumptionContext(idUnidade, mes, ano);
 
     if (!idTabela) {
       idTabela = await getTaxId(mes, ano);
@@ -242,7 +333,7 @@ export async function getUnidade(idUnidade: number, mes: number, ano: number): P
     const { data } = await apiClient.get(
       `/reports/bill/unidade/${idUnidade}?idTabela=${idTabela}&dataSelecionada=${dataSelecionada}`,
     );
-    const faixaImposto = await getFaixaImpostos(idTabela);
+    const faixaImposto = await getFaixaImpostosCached(idTabela);
     const raw = data?.data ?? data;
     return normalizeUnidade(raw, faixaImposto);
   } catch (error) {
