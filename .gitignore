@@ -11,6 +11,7 @@ expo-env.d.ts
 
 # Native
 .kotlin/
+android/local.properties
 *.orig.*
 *.jks
 *.p8
@@ -32,6 +33,10 @@ yarn-error.*
 
 # local env files
 .env*
+
+# Android release signing (copie android-keystore.properties.example → android/keystore.properties)
+android/keystore.properties
+keystore.properties
 
 # typescript
 *.tsbuildinfo

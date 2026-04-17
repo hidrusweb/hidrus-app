@@ -1,6 +1,6 @@
 import { Controller } from "react-hook-form";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View, type TextInputProps } from "react-native";
 import { colors, spacing } from "../../core/theme/theme";
 
 type Props = {
@@ -8,9 +8,21 @@ type Props = {
   name: string;
   label: string;
   secureTextEntry?: boolean;
+  /** Substitui o onChange do campo (ex.: máscara). Recebe o texto digitado e o setter do react-hook-form. */
+  onChangeTextOverride?: (text: string, fieldOnChange: (v: string) => void) => void;
+  keyboardType?: TextInputProps["keyboardType"];
+  autoCorrect?: TextInputProps["autoCorrect"];
 };
 
-export function FormInput({ control, name, label, secureTextEntry }: Props) {
+export function FormInput({
+  control,
+  name,
+  label,
+  secureTextEntry,
+  onChangeTextOverride,
+  keyboardType,
+  autoCorrect,
+}: Props) {
   const [isFocused, setIsFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const isPasswordField = !!secureTextEntry;
@@ -26,9 +38,13 @@ export function FormInput({ control, name, label, secureTextEntry }: Props) {
             <TextInput
               style={[styles.input, isPasswordField && styles.inputWithAction, error && styles.errorBorder]}
               value={String(value ?? "")}
-              onChangeText={onChange}
+              onChangeText={
+                onChangeTextOverride ? (t: string) => onChangeTextOverride(t, onChange) : onChange
+              }
               secureTextEntry={isPasswordField ? !showPassword : false}
               autoCapitalize="none"
+              autoCorrect={autoCorrect ?? (isPasswordField ? false : true)}
+              keyboardType={keyboardType ?? "default"}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
             />

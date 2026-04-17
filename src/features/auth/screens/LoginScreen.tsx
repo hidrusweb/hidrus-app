@@ -4,6 +4,12 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useForm } from "react-hook-form";
 import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { z } from "zod";
+import {
+  isEmailIdentifierPath,
+  isLikelyEmailForKeyboard,
+  normalizeLoginIdentifierForApi,
+  onLoginIdentifierChange,
+} from "../../../core/utils/loginIdentifier";
 import { colors, spacing } from "../../../core/theme/theme";
 import { FormInput } from "../../../shared/components/FormInput";
 import { PrimaryButton } from "../../../shared/components/PrimaryButton";
@@ -11,7 +17,26 @@ import { useAuthStore } from "../store/useAuthStore";
 import type { AuthStackParamList } from "../../../navigation/types";
 
 const schema = z.object({
-  cpf: z.string().min(11, "Informe o CPF/CNPJ."),
+  emailCpf: z
+    .string()
+    .min(1, "Informe o CPF ou e-mail.")
+    .superRefine((val, ctx) => {
+      const t = val.trim();
+      if (isEmailIdentifierPath(t)) {
+        const parsed = z.email().safeParse(t);
+        if (!parsed.success) {
+          ctx.addIssue({ code: "custom", message: "E-mail inválido." });
+        }
+      } else {
+        const d = t.replace(/\D/g, "");
+        if (d.length !== 11) {
+          ctx.addIssue({
+            code: "custom",
+            message: "Informe um CPF com 11 dígitos.",
+          });
+        }
+      }
+    }),
   senha: z.string().min(1, "Informe a senha."),
   lembrar: z.boolean(),
 });
@@ -20,16 +45,19 @@ type FormData = z.infer<typeof schema>;
 
 export function LoginScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
-  const { control, handleSubmit, setValue, watch } = useForm<any>({
+  const { control, handleSubmit, setValue, watch } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { cpf: "", senha: "", lembrar: false },
+    defaultValues: { emailCpf: "", senha: "", lembrar: false },
   });
   const { login, loading } = useAuthStore();
   const lembrar = watch("lembrar");
+  const emailCpfWatch = watch("emailCpf");
+  const loginKeyboardType = isLikelyEmailForKeyboard(String(emailCpfWatch ?? "")) ? "email-address" : "default";
 
   const onSubmit = handleSubmit(async (values) => {
     try {
-      await login(values.cpf, values.senha, values.lembrar);
+      const id = normalizeLoginIdentifierForApi(values.emailCpf);
+      await login(id, values.senha, values.lembrar);
     } catch (error) {
       Alert.alert("Erro", (error as Error).message);
     }
@@ -43,7 +71,14 @@ export function LoginScreen() {
         resizeMode="contain"
       />
       <Text style={styles.title}>Entrar</Text>
-      <FormInput control={control} name="cpf" label="CPF/CNPJ" />
+      <FormInput
+        control={control}
+        name="emailCpf"
+        label="CPF ou e-mail"
+        onChangeTextOverride={onLoginIdentifierChange}
+        keyboardType={loginKeyboardType}
+        autoCorrect={false}
+      />
       <FormInput control={control} name="senha" label="Senha" secureTextEntry />
       <Pressable style={styles.row} onPress={() => setValue("lembrar", !lembrar)}>
         <View style={[styles.checkbox, lembrar && styles.checkboxChecked]} />

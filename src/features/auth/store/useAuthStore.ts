@@ -5,13 +5,10 @@ import { clearContaApiCaches } from "../../conta/services/contaService";
 import { getAccountProfile, login as loginRequest } from "../services/authService";
 import type { AuthUser } from "../types/auth";
 
-function formatCpfCnpjFromDigits(raw: string): string {
+function formatCpfFromDigits(raw: string): string {
   const digits = raw.replace(/\D/g, "");
   if (digits.length === 11) {
     return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
-  }
-  if (digits.length === 14) {
-    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
   }
   return "";
 }
@@ -21,7 +18,7 @@ type AuthState = {
   loading: boolean;
   bootstrapDone: boolean;
   bootstrap: () => Promise<void>;
-  login: (cpf: string, senha: string, lembrar: boolean) => Promise<void>;
+  login: (emailCpf: string, senha: string, lembrar: boolean) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -59,10 +56,10 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ bootstrapDone: true });
     }
   },
-  login: async (cpf, senha, lembrar) => {
+  login: async (emailCpf, senha, lembrar) => {
     set({ loading: true });
     try {
-      const user = await loginRequest({ emailCpf: cpf, senha, lembrar });
+      const user = await loginRequest({ emailCpf, senha, lembrar });
       // Set token first so follow-up protected requests (e.g. /account/me) are authenticated.
       setApiAuthToken(user.token ?? null);
       try {
@@ -76,8 +73,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         /* offline: mantém dados do JWT */
       }
       user.loginId = user.loginId || user.email || user.cpf;
-      if (!user.cpf) {
-        const formatted = formatCpfCnpjFromDigits(cpf);
+      if (!user.cpf && !emailCpf.includes("@")) {
+        const formatted = formatCpfFromDigits(emailCpf);
         if (formatted) user.cpf = formatted;
       }
       const toSave: AuthUser = { ...user, lembrar, senha: lembrar ? user.senha : undefined };
