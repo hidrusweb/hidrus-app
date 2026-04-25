@@ -68,6 +68,15 @@ npx eas build --platform ios --profile preview
 npx eas build --platform android --profile production
 ```
 
+## Build sem EAS
+
+Comandos:
+
+```bash
+cd android && ./gradlew bundleRelease
+cd android && ./gradlew assembleRelease
+```
+
 ## Publicação Android (Play Store)
 
 O projeto possui workflow em `.github/workflows/release-android-play-store.yml` com submit configurado via `eas.json`.
