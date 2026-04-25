@@ -1,5 +1,6 @@
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useNavigation } from "@react-navigation/native";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useCallback, useState } from "react";
 import {
@@ -66,6 +67,7 @@ export function AccountHeaderMenu() {
               style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
               onPress={onPerfil}
             >
+              <Ionicons name="person-outline" size={20} color={colors.text} />
               <Text style={styles.itemText}>Perfil</Text>
             </Pressable>
             <View style={styles.separator} />
@@ -73,6 +75,7 @@ export function AccountHeaderMenu() {
               style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
               onPress={onSair}
             >
+              <Ionicons name="log-out-outline" size={20} color={colors.danger} />
               <Text style={[styles.itemText, styles.dangerText]}>Sair</Text>
             </Pressable>
           </View>
@@ -127,6 +130,10 @@ const styles = StyleSheet.create({
     }),
   },
   item: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
     paddingVertical: spacing.sm + 2,
     paddingHorizontal: spacing.md,
   },

@@ -20,9 +20,11 @@ type AuthState = {
   bootstrap: () => Promise<void>;
   login: (emailCpf: string, senha: string, lembrar: boolean) => Promise<void>;
   logout: () => Promise<void>;
+  /** Atualiza JWT após refresh na API (persistência + estado). */
+  applyRefreshedToken: (token: string) => Promise<void>;
 };
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   loading: false,
   bootstrapDone: false,
@@ -90,5 +92,13 @@ export const useAuthStore = create<AuthState>((set) => ({
     clearContaApiCaches();
     await saveAuthUser(null);
     set({ user: null });
+  },
+  applyRefreshedToken: async (token) => {
+    setApiAuthToken(token);
+    const base = get().user ?? (await getSavedAuthUser());
+    if (!base) return;
+    const updated: AuthUser = { ...base, token };
+    await saveAuthUser(updated);
+    set({ user: updated });
   },
 }));

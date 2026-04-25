@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosError, AxiosHeaders, InternalAxiosRequestConfig, isAxiosError } from "axios";
 import { APP_BEARER_TOKEN, getApiBaseUrl } from "../config/env";
 
 export const apiClient = axios.create({
@@ -9,9 +9,14 @@ export const apiClient = axios.create({
 let sessionToken: string | null = null;
 const debugApi = (process.env.EXPO_PUBLIC_API_DEBUG ?? "true").toLowerCase() === "true";
 
+/** Evita vários 401 dispararem refresh em paralelo. */
+let refreshInFlight: Promise<string | null> | null = null;
+
 export function setApiAuthToken(token?: string | null) {
   sessionToken = token ?? null;
 }
+
+type RetryableRequest = InternalAxiosRequestConfig & { _retry?: boolean };
 
 function isPublicAccountPath(url?: string) {
   if (!url) return false;
@@ -29,6 +34,60 @@ function isPublicAccountPath(url?: string) {
   );
 }
 
+function isTokenRefreshPath(url?: string) {
+  if (!url) return false;
+  const normalized = url.replace(/^\//, "").toLowerCase();
+  return normalized.startsWith("account/token/refresh");
+}
+
+function looksLikeAuthSessionError(error: AxiosError): boolean {
+  const data = error.response?.data as { message?: unknown } | undefined;
+  const msg = typeof data?.message === "string" ? data.message.toLowerCase() : "";
+  if (msg.includes("unauthenticated")) return true;
+  if (msg.includes("token has expired")) return true;
+  if (msg.includes("token expired")) return true;
+  return false;
+}
+
+function refreshAccessToken(): Promise<string | null> {
+  if (refreshInFlight) return refreshInFlight;
+  const token = sessionToken || APP_BEARER_TOKEN;
+  if (!token) return Promise.resolve(null);
+
+  refreshInFlight = (async () => {
+    try {
+      const base = getApiBaseUrl().replace(/\/$/, "");
+      const { data } = await axios.post<{ accessToken?: string; token?: string }>(
+        `${base}/account/token/refresh`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 15000,
+        },
+      );
+      const newToken = String(data?.accessToken ?? data?.token ?? "");
+      return newToken || null;
+    } catch {
+      return null;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
+}
+
+function setRequestAuthHeader(config: InternalAxiosRequestConfig, bearer: string) {
+  const h = config.headers;
+  if (h instanceof AxiosHeaders) {
+    h.set("Authorization", `Bearer ${bearer}`);
+  } else {
+    const plain = (h ?? {}) as Record<string, string>;
+    plain.Authorization = `Bearer ${bearer}`;
+    config.headers = plain as typeof h;
+  }
+}
+
 apiClient.interceptors.request.use((config) => {
   config.headers = config.headers ?? {};
   const url = config.url ?? "";
@@ -40,9 +99,15 @@ apiClient.interceptors.request.use((config) => {
   }
 
   if (debugApi) {
-    const body = typeof config.data === "object" && config.data
-      ? { ...config.data, senha: config.data?.senha ? "***" : undefined, senhaAtual: config.data?.senhaAtual ? "***" : undefined, novaSenha: config.data?.novaSenha ? "***" : undefined }
-      : config.data;
+    const body =
+      typeof config.data === "object" && config.data
+        ? {
+            ...config.data,
+            senha: config.data?.senha ? "***" : undefined,
+            senhaAtual: config.data?.senhaAtual ? "***" : undefined,
+            novaSenha: config.data?.novaSenha ? "***" : undefined,
+          }
+        : config.data;
     console.log("[API][REQ]", {
       method,
       url: `${config.baseURL ?? ""}${url}`,
@@ -65,7 +130,7 @@ apiClient.interceptors.response.use(
     }
     return response;
   },
-  (error) => {
+  async (error: AxiosError) => {
     if (debugApi) {
       console.log("[API][ERR]", {
         status: error?.response?.status,
@@ -76,12 +141,42 @@ apiClient.interceptors.response.use(
         data: error?.response?.data,
       });
     }
+
+    if (!isAxiosError(error) || !error.config) {
+      return Promise.reject(error);
+    }
+
+    const originalRequest = error.config as RetryableRequest;
+    const url = originalRequest.url ?? "";
+
+    const canTryRefresh =
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isPublicAccountPath(url) &&
+      !isTokenRefreshPath(url) &&
+      looksLikeAuthSessionError(error);
+
+    if (canTryRefresh) {
+      originalRequest._retry = true;
+      const newToken = await refreshAccessToken();
+      if (!newToken) {
+        const { useAuthStore } = await import("../../features/auth/store/useAuthStore");
+        await useAuthStore.getState().logout();
+        return Promise.reject(error);
+      }
+      setApiAuthToken(newToken);
+      const { useAuthStore } = await import("../../features/auth/store/useAuthStore");
+      await useAuthStore.getState().applyRefreshedToken(newToken);
+      setRequestAuthHeader(originalRequest, newToken);
+      return apiClient(originalRequest);
+    }
+
     return Promise.reject(error);
   },
 );
 
 export function normalizeApiError(error: unknown): string {
-  if (axios.isAxiosError(error)) {
+  if (isAxiosError(error)) {
     if (error.code === "ECONNABORTED") return "Tempo de resposta excedido. Tente novamente.";
     if (error.code === "ERR_NETWORK") return "Falha de rede ao acessar a API.";
     const message = (error.response?.data as any)?.message;
