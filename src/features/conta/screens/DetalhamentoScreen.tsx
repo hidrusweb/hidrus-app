@@ -106,7 +106,7 @@ export function DetalhamentoScreen({ unidade }: Props) {
         <View style={styles.footerSection}>
           <View style={styles.footerCard}>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Total faixas (variável)</Text>
+              <Text style={styles.summaryLabel}>Total Água e Esgoto</Text>
               <Text style={styles.summaryValue}>{formatCurrency(somaFaixas)}</Text>
             </View>
             <View style={styles.summaryRow}>

@@ -10,6 +10,7 @@ import { DemonstrativoScreen } from "./DemonstrativoScreen";
 import { DetalhamentoScreen } from "./DetalhamentoScreen";
 import { EvolucaoScreen } from "./EvolucaoScreen";
 import { HistoricoScreen } from "./HistoricoScreen";
+import { ImpressaoScreen } from "./ImpressaoScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -65,6 +66,14 @@ export function BillTabsScreen() {
           }}
         >
           {() => <EvolucaoScreen historico={historico} />}
+        </Tab.Screen>
+        <Tab.Screen
+          name="Impressão"
+          options={{
+            tabBarIcon: ({ color, size }) => <Ionicons name="print-outline" color={color} size={size} />,
+          }}
+        >
+          {() => <ImpressaoScreen unidade={unidade} />}
         </Tab.Screen>
       </Tab.Navigator>
     </SafeAreaView>
